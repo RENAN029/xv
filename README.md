@@ -6,9 +6,9 @@ chmod +x b.sh
 
 ./b.sh
 
-sudo pacman -Scc pnpm github-cli
+sudo pacman -Scc smartmontools iwd
 
-sudo pacman -S python-pip rustup
+sudo pacman -S github-cli httpie
 
 sudo pacman -Syu $(pacman -Qnq) 
 
