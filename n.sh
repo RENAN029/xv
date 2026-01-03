@@ -1,4 +1,3 @@
-```bash
 #!/bin/bash
 set -e
 
@@ -31,6 +30,9 @@ S_ANANICY="$HOME/.ananicy_state"
 S_ARCHSB="$HOME/.archsb_state"
 S_BTRFS="$HOME/.btrfs_state"
 S_CACHYCONFS="$HOME/.cachyconfs_state"
+S_HWACCEL_FLATPAK="$HOME/.hwaccel_flatpak_state"
+S_SWAPFILE="$HOME/.swapfile_state"
+S_DISTROBOX_HANDLER="$HOME/.distrobox_handler_state"
 
 shader_booster() {
     clear
@@ -2341,6 +2343,799 @@ EOF
     read -p "Pressione Enter para continuar..."
 }
 
+hwaccel_flatpak_install() {
+    clear
+    echo "=== HW Acceleration para Flatpak ==="
+    
+    if [ -f "$S_HWACCEL_FLATPAK" ]; then
+        echo "Status: INSTALADO"
+        echo "1) Verificar status"
+        echo "2) Atualizar configuração"
+        echo "3) Desinstalar"
+        echo "4) Voltar"
+        read -p "> " opt
+        
+        case $opt in
+            1)
+                echo "Status da aceleração por hardware para Flatpak:"
+                echo ""
+                
+                if command -v flatpak &>/dev/null; then
+                    echo "Flatpak instalado: SIM"
+                    echo ""
+                    echo "Configurações ativas:"
+                    
+                    if [ -f /etc/environment ]; then
+                        echo "Variáveis de ambiente:"
+                        grep -i "flatpak\|wayland\|nvidia\|vaapi" /etc/environment || echo "Nenhuma variável específica encontrada"
+                    fi
+                    
+                    echo ""
+                    echo "Overrides do Flatpak:"
+                    flatpak override --show 2>/dev/null | head -20 || echo "Nenhum override configurado"
+                else
+                    echo "Flatpak não está instalado."
+                fi
+                ;;
+            2)
+                echo "Atualizando configuração de HW Acceleration..."
+                
+                mkdir -p /etc/profile.d/
+                
+                cat > /etc/profile.d/flatpak-hwaccel.sh << 'EOF'
+export FLATPAK_GL_DRIVERS="nvidia"
+export GALLIUM_DRIVER="zink"
+export __GLX_VENDOR_LIBRARY_NAME="nvidia"
+export VK_ICD_FILENAMES="/usr/share/vulkan/icd.d/nvidia_icd.json"
+export LIBVA_DRIVER_NAME="nvidia"
+export NVD_BACKEND="direct"
+export MOZ_ENABLE_WAYLAND=1
+export QT_QPA_PLATFORM=wayland
+export GDK_BACKEND=wayland,x11
+export CLUTTER_BACKEND=wayland
+export SDL_VIDEODRIVER=wayland
+export XDG_SESSION_TYPE=wayland
+export XDG_CURRENT_DESKTOP=sway
+export WLR_NO_HARDWARE_CURSORS=1
+export WLR_RENDERER=vulkan
+export _JAVA_AWT_WM_NONREPARENTING=1
+export NO_AT_BRIDGE=1
+EOF
+                
+                if [ -f /etc/environment ]; then
+                    echo "Atualizando /etc/environment..."
+                    sed -i '/FLATPAK_GL_DRIVERS\|GALLIUM_DRIVER\|__GLX_VENDOR_LIBRARY_NAME\|VK_ICD_FILENAMES\|LIBVA_DRIVER_NAME\|NVD_BACKEND/d' /etc/environment
+                    
+                    cat >> /etc/environment << 'EOF'
+FLATPAK_GL_DRIVERS="nvidia"
+GALLIUM_DRIVER="zink"
+__GLX_VENDOR_LIBRARY_NAME="nvidia"
+VK_ICD_FILENAMES="/usr/share/vulkan/icd.d/nvidia_icd.json"
+LIBVA_DRIVER_NAME="nvidia"
+NVD_BACKEND="direct"
+MOZ_ENABLE_WAYLAND=1
+QT_QPA_PLATFORM=wayland
+GDK_BACKEND=wayland,x11
+CLUTTER_BACKEND=wayland
+SDL_VIDEODRIVER=wayland
+XDG_SESSION_TYPE=wayland
+EOF
+                fi
+                
+                echo "Configuração atualizada. Reinicie para aplicar."
+                ;;
+            3)
+                read -p "Deseja remover a configuração de HW Acceleration? (s/n): " -n 1 resposta
+                echo
+                if [ "$resposta" = "s" ]; then
+                    rm -f /etc/profile.d/flatpak-hwaccel.sh 2>/dev/null
+                    
+                    if [ -f /etc/environment ]; then
+                        sed -i '/FLATPAK_GL_DRIVERS\|GALLIUM_DRIVER\|__GLX_VENDOR_LIBRARY_NAME\|VK_ICD_FILENAMES\|LIBVA_DRIVER_NAME\|NVD_BACKEND/d' /etc/environment
+                    fi
+                    
+                    rm -f "$S_HWACCEL_FLATPAK"
+                    echo "Configuração de HW Acceleration removida."
+                fi
+                ;;
+            4)
+                return
+                ;;
+        esac
+    else
+        echo "Status: NÃO INSTALADO"
+        echo "Configuração de aceleração por hardware para aplicativos Flatpak."
+        echo "Melhora o desempenho de aplicativos Flatpak com GPU NVIDIA/AMD/Intel."
+        read -p "Configurar HW Acceleration para Flatpak? (s/n): " -n 1 resposta
+        echo
+        
+        if [ "$resposta" = "s" ]; then
+            echo "Configurando HW Acceleration para Flatpak..."
+            
+            if ! command -v flatpak &>/dev/null; then
+                echo "Flatpak não está instalado. Instalando..."
+                pacman -S --noconfirm flatpak
+            fi
+            
+            mkdir -p /etc/profile.d/
+            
+            cat > /etc/profile.d/flatpak-hwaccel.sh << 'EOF'
+export FLATPAK_GL_DRIVERS="nvidia"
+export GALLIUM_DRIVER="zink"
+export __GLX_VENDOR_LIBRARY_NAME="nvidia"
+export VK_ICD_FILENAMES="/usr/share/vulkan/icd.d/nvidia_icd.json"
+export LIBVA_DRIVER_NAME="nvidia"
+export NVD_BACKEND="direct"
+export MOZ_ENABLE_WAYLAND=1
+export QT_QPA_PLATFORM=wayland
+export GDK_BACKEND=wayland,x11
+export CLUTTER_BACKEND=wayland
+export SDL_VIDEODRIVER=wayland
+export XDG_SESSION_TYPE=wayland
+export XDG_CURRENT_DESKTOP=sway
+export WLR_NO_HARDWARE_CURSORS=1
+export WLR_RENDERER=vulkan
+export _JAVA_AWT_WM_NONREPARENTING=1
+export NO_AT_BRIDGE=1
+EOF
+            
+            if [ -f /etc/environment ]; then
+                cat >> /etc/environment << 'EOF'
+FLATPAK_GL_DRIVERS="nvidia"
+GALLIUM_DRIVER="zink"
+__GLX_VENDOR_LIBRARY_NAME="nvidia"
+VK_ICD_FILENAMES="/usr/share/vulkan/icd.d/nvidia_icd.json"
+LIBVA_DRIVER_NAME="nvidia"
+NVD_BACKEND="direct"
+MOZ_ENABLE_WAYLAND=1
+QT_QPA_PLATFORM=wayland
+GDK_BACKEND=wayland,x11
+CLUTTER_BACKEND=wayland
+SDL_VIDEODRIVER=wayland
+XDG_SESSION_TYPE=wayland
+EOF
+            fi
+            
+            echo "Configurando overrides do Flatpak..."
+            
+            if lspci | grep -qi 'nvidia'; then
+                flatpak override --user --env=FLATPAK_GL_DRIVERS=nvidia 2>/dev/null || true
+                flatpak override --user --env=__GLX_VENDOR_LIBRARY_NAME=nvidia 2>/dev/null || true
+                flatpak override --user --env=VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nvidia_icd.json 2>/dev/null || true
+            fi
+            
+            flatpak override --user --env=MOZ_ENABLE_WAYLAND=1 2>/dev/null || true
+            flatpak override --user --env=QT_QPA_PLATFORM=wayland 2>/dev/null || true
+            flatpak override --user --env=GDK_BACKEND=wayland,x11 2>/dev/null || true
+            
+            echo "1" > "$S_HWACCEL_FLATPAK"
+            echo "HW Acceleration para Flatpak configurado com sucesso!"
+            echo "Reinicie para aplicar as configurações."
+        fi
+    fi
+    
+    read -p "Pressione Enter para continuar..."
+}
+
+swapfile_install() {
+    clear
+    echo "=== Gerenciador de Swapfile ==="
+    
+    if [ -f "$S_SWAPFILE" ]; then
+        echo "Status: INSTALADO"
+        echo "1) Verificar swap"
+        echo "2) Criar novo swapfile"
+        echo "3) Remover swapfile"
+        echo "4) Desinstalar gerenciador"
+        echo "5) Voltar"
+        read -p "> " opt
+        
+        case $opt in
+            1)
+                echo "Status do swap:"
+                echo ""
+                swapon --show
+                echo ""
+                echo "Uso de memória:"
+                free -h
+                ;;
+            2)
+                echo "Criar novo swapfile:"
+                echo ""
+                echo "1) Criar no diretório raiz (/)"
+                echo "2) Criar no diretório home (/home)"
+                echo "3) Voltar"
+                read -p "> " swap_opt
+                
+                case $swap_opt in
+                    1)
+                        echo "Criando swapfile no diretório raiz..."
+                        
+                        if findmnt -n -o FSTYPE / | grep -q "btrfs"; then
+                            echo "Sistema de arquivos Btrfs detectado..."
+                            if [ ! -d /swap ]; then
+                                btrfs subvolume create /swap
+                            fi
+                            btrfs filesystem mkswapfile --size 8g --uuid clear /swap/swapfile
+                            swapon /swap/swapfile
+                            echo "/swap/swapfile none swap defaults 0 0" | tee -a /etc/fstab
+                            echo "Swapfile Btrfs criado com sucesso em /swap/swapfile"
+                        else
+                            echo "Criando swapfile tradicional..."
+                            dd if=/dev/zero of=/swapfile bs=1G count=8 status=progress
+                            chmod 600 /swapfile
+                            mkswap /swapfile
+                            swapon /swapfile
+                            echo "/swapfile none swap defaults 0 0" | tee -a /etc/fstab
+                            echo "Swapfile criado com sucesso em /swapfile"
+                        fi
+                        echo "1" > "$S_SWAPFILE"
+                        ;;
+                    2)
+                        echo "Criando swapfile no diretório home..."
+                        
+                        if findmnt -n -o FSTYPE /home | grep -q "btrfs"; then
+                            echo "Sistema de arquivos Btrfs detectado..."
+                            if [ ! -d /home/swap ]; then
+                                btrfs subvolume create /home/swap
+                            fi
+                            btrfs filesystem mkswapfile --size 8g --uuid clear /home/swap/swapfile
+                            swapon /home/swap/swapfile
+                            echo "/home/swap/swapfile none swap defaults 0 0" | tee -a /etc/fstab
+                            echo "Swapfile Btrfs criado com sucesso em /home/swap/swapfile"
+                        else
+                            echo "Criando swapfile tradicional..."
+                            dd if=/dev/zero of=/home/swapfile bs=1G count=8 status=progress
+                            chmod 600 /home/swapfile
+                            mkswap /home/swapfile
+                            swapon /home/swapfile
+                            echo "/home/swapfile none swap defaults 0 0" | tee -a /etc/fstab
+                            echo "Swapfile criado com sucesso em /home/swapfile"
+                        fi
+                        echo "1" > "$S_SWAPFILE"
+                        ;;
+                    3)
+                        return
+                        ;;
+                esac
+                ;;
+            3)
+                echo "Remover swapfile:"
+                echo ""
+                echo "AVISO: Isto desativará e removerá o swapfile."
+                read -p "Continuar? (s/n): " -n 1 resposta
+                echo
+                if [ "$resposta" = "s" ]; then
+                    swapoff -a
+                    
+                    if [ -f /swapfile ]; then
+                        rm -f /swapfile
+                        sed -i '\|^/swapfile|d' /etc/fstab
+                        echo "Swapfile /swapfile removido."
+                    fi
+                    
+                    if [ -f /home/swapfile ]; then
+                        rm -f /home/swapfile
+                        sed -i '\|^/home/swapfile|d' /etc/fstab
+                        echo "Swapfile /home/swapfile removido."
+                    fi
+                    
+                    if [ -d /swap ] && [ -f /swap/swapfile ]; then
+                        btrfs subvolume delete /swap 2>/dev/null || rm -rf /swap
+                        sed -i '\|^/swap/swapfile|d' /etc/fstab
+                        echo "Swapfile Btrfs /swap/swapfile removido."
+                    fi
+                    
+                    if [ -d /home/swap ] && [ -f /home/swap/swapfile ]; then
+                        btrfs subvolume delete /home/swap 2>/dev/null || rm -rf /home/swap
+                        sed -i '\|^/home/swap/swapfile|d' /etc/fstab
+                        echo "Swapfile Btrfs /home/swap/swapfile removido."
+                    fi
+                    
+                    echo "Swap removido com sucesso."
+                fi
+                ;;
+            4)
+                read -p "Deseja remover o gerenciador de swapfile? (s/n): " -n 1 resposta
+                echo
+                if [ "$resposta" = "s" ]; then
+                    rm -f "$S_SWAPFILE"
+                    echo "Gerenciador de swapfile removido."
+                fi
+                ;;
+            5)
+                return
+                ;;
+        esac
+    else
+        if swapon --show | grep -q '.'; then
+            echo "Status: SWAP EXISTENTE"
+            echo "Swap já está habilitado no sistema."
+            echo ""
+            swapon --show
+            echo ""
+            echo "1) Registrar no gerenciador"
+            echo "2) Criar novo swapfile"
+            echo "3) Voltar"
+            read -p "> " opt
+            
+            case $opt in
+                1)
+                    echo "1" > "$S_SWAPFILE"
+                    echo "Swap registrado no gerenciador."
+                    ;;
+                2)
+                    swapfile_install
+                    ;;
+                3)
+                    return
+                    ;;
+            esac
+        else
+            echo "Status: NÃO INSTALADO"
+            echo "Gerenciador de swapfile para criar e configurar arquivos de swap."
+            echo "Swap melhora o desempenho do sistema com mais memória virtual."
+            read -p "Configurar swapfile? (s/n): " -n 1 resposta
+            echo
+            
+            if [ "$resposta" = "s" ]; then
+                echo "Criar swapfile:"
+                echo ""
+                echo "1) Criar no diretório raiz (/) - 8GB"
+                echo "2) Criar no diretório home (/home) - 8GB"
+                echo "3) Personalizar tamanho e local"
+                echo "4) Voltar"
+                read -p "> " swap_opt
+                
+                case $swap_opt in
+                    1)
+                        echo "Criando swapfile de 8GB no diretório raiz..."
+                        
+                        if findmnt -n -o FSTYPE / | grep -q "btrfs"; then
+                            echo "Sistema de arquivos Btrfs detectado..."
+                            if [ ! -d /swap ]; then
+                                btrfs subvolume create /swap
+                            fi
+                            btrfs filesystem mkswapfile --size 8g --uuid clear /swap/swapfile
+                            swapon /swap/swapfile
+                            echo "/swap/swapfile none swap defaults 0 0" | tee -a /etc/fstab
+                            echo "Swapfile Btrfs criado com sucesso em /swap/swapfile"
+                        else
+                            echo "Criando swapfile tradicional..."
+                            dd if=/dev/zero of=/swapfile bs=1G count=8 status=progress
+                            chmod 600 /swapfile
+                            mkswap /swapfile
+                            swapon /swapfile
+                            echo "/swapfile none swap defaults 0 0" | tee -a /etc/fstab
+                            echo "Swapfile criado com sucesso em /swapfile"
+                        fi
+                        echo "1" > "$S_SWAPFILE"
+                        echo "Swapfile criado e ativado com sucesso!"
+                        ;;
+                    2)
+                        echo "Criando swapfile de 8GB no diretório home..."
+                        
+                        if findmnt -n -o FSTYPE /home | grep -q "btrfs"; then
+                            echo "Sistema de arquivos Btrfs detectado..."
+                            if [ ! -d /home/swap ]; then
+                                btrfs subvolume create /home/swap
+                            fi
+                            btrfs filesystem mkswapfile --size 8g --uuid clear /home/swap/swapfile
+                            swapon /home/swap/swapfile
+                            echo "/home/swap/swapfile none swap defaults 0 0" | tee -a /etc/fstab
+                            echo "Swapfile Btrfs criado com sucesso em /home/swap/swapfile"
+                        else
+                            echo "Criando swapfile tradicional..."
+                            dd if=/dev/zero of=/home/swapfile bs=1G count=8 status=progress
+                            chmod 600 /home/swapfile
+                            mkswap /home/swapfile
+                            swapon /home/swapfile
+                            echo "/home/swapfile none swap defaults 0 0" | tee -a /etc/fstab
+                            echo "Swapfile criado com sucesso em /home/swapfile"
+                        fi
+                        echo "1" > "$S_SWAPFILE"
+                        echo "Swapfile criado e ativado com sucesso!"
+                        ;;
+                    3)
+                        read -p "Tamanho do swapfile em GB (ex: 4, 8, 16): " swap_size
+                        read -p "Localização (ex: /swapfile, /home/swapfile): " swap_location
+                        
+                        if [[ ! "$swap_size" =~ ^[0-9]+$ ]]; then
+                            echo "Tamanho inválido."
+                            read -p "Pressione Enter para continuar..."
+                            return
+                        fi
+                        
+                        if [ -z "$swap_location" ]; then
+                            echo "Localização inválida."
+                            read -p "Pressione Enter para continuar..."
+                            return
+                        fi
+                        
+                        echo "Criando swapfile de ${swap_size}GB em $swap_location..."
+                        
+                        dir=$(dirname "$swap_location")
+                        if findmnt -n -o FSTYPE "$dir" | grep -q "btrfs"; then
+                            echo "Sistema de arquivos Btrfs detectado..."
+                            btrfs_dir="${dir}/swap-$(date +%s)"
+                            btrfs subvolume create "$btrfs_dir"
+                            btrfs filesystem mkswapfile --size ${swap_size}g --uuid clear "${btrfs_dir}/swapfile"
+                            swapon "${btrfs_dir}/swapfile"
+                            echo "${btrfs_dir}/swapfile none swap defaults 0 0" | tee -a /etc/fstab
+                            echo "Swapfile Btrfs criado com sucesso em ${btrfs_dir}/swapfile"
+                        else
+                            echo "Criando swapfile tradicional..."
+                            dd if=/dev/zero of="$swap_location" bs=1G count=$swap_size status=progress
+                            chmod 600 "$swap_location"
+                            mkswap "$swap_location"
+                            swapon "$swap_location"
+                            echo "$swap_location none swap defaults 0 0" | tee -a /etc/fstab
+                            echo "Swapfile criado com sucesso em $swap_location"
+                        fi
+                        echo "1" > "$S_SWAPFILE"
+                        echo "Swapfile criado e ativado com sucesso!"
+                        ;;
+                    4)
+                        return
+                        ;;
+                esac
+            fi
+        fi
+    fi
+    
+    read -p "Pressione Enter para continuar..."
+}
+
+distrobox_handler_install() {
+    clear
+    echo "=== Distrobox Command Handler ==="
+    
+    if [ -f "$S_DISTROBOX_HANDLER" ]; then
+        echo "Status: INSTALADO"
+        echo "1) Verificar instalação"
+        echo "2) Atualizar configuração"
+        echo "3) Remover"
+        echo "4) Voltar"
+        read -p "> " opt
+        
+        case $opt in
+            1)
+                echo "Verificando instalação do Distrobox Command Handler..."
+                echo ""
+                
+                local handler_dir="$HOME/.local/distrobox-handler"
+                
+                if [ -d "$handler_dir" ]; then
+                    echo "Diretório do handler: EXISTE ($handler_dir)"
+                    
+                    if [ -f "$handler_dir/command_not_found_handle" ]; then
+                        echo "Handler Bash: INSTALADO"
+                    else
+                        echo "Handler Bash: NÃO INSTALADO"
+                    fi
+                    
+                    if [ -f "$handler_dir/zsh_command_not_found_handler" ]; then
+                        echo "Handler Zsh: INSTALADO"
+                    else
+                        echo "Handler Zsh: NÃO INSTALADO"
+                    fi
+                else
+                    echo "Diretório do handler: NÃO EXISTE"
+                fi
+                
+                echo ""
+                echo "Integrações:"
+                
+                if [ -f "/etc/bash.bashrc.d/99-distrobox-cnf" ]; then
+                    echo "Bash system-wide: INSTALADO"
+                else
+                    echo "Bash system-wide: NÃO INSTALADO"
+                fi
+                
+                if [ -f "/etc/zsh/zshrc.d/99-distrobox-cnf.zsh" ]; then
+                    echo "Zsh system-wide: INSTALADO"
+                else
+                    echo "Zsh system-wide: NÃO INSTALADO"
+                fi
+                
+                if grep -q "distrobox-handler" "$HOME/.bashrc" 2>/dev/null; then
+                    echo "Bash user: INSTALADO"
+                else
+                    echo "Bash user: NÃO INSTALADO"
+                fi
+                
+                if grep -q "distrobox-handler" "$HOME/.zshrc" 2>/dev/null; then
+                    echo "Zsh user: INSTALADO"
+                else
+                    echo "Zsh user: NÃO INSTALADO"
+                fi
+                
+                if [ -f "/etc/profile.d/distrobox-host-aliases.sh" ]; then
+                    echo "Aliases: INSTALADO"
+                else
+                    echo "Aliases: NÃO INSTALADO"
+                fi
+                ;;
+            2)
+                echo "Atualizando configuração do Distrobox Command Handler..."
+                
+                local handler_dir="$HOME/.local/distrobox-handler"
+                mkdir -p "$handler_dir"
+                
+                cat > "$handler_dir/command_not_found_handle" << 'EOF'
+#!/bin/bash
+# Distrobox Command-Not-Found Handler
+# Automatically executes commands on host if not found in container
+command_not_found_handle() {
+    local cmd="$1"
+    shift
+    local args="$@"
+    
+    if ! command -v distrobox-host-exec >/dev/null 2>&1; then
+        echo "bash: $cmd: command not found" >&2
+        return 127
+    fi
+    
+    if distrobox-host-exec which "$cmd" >/dev/null 2>&1; then
+        echo "Command '$cmd' not found in container, executing on host..." >&2
+        exec distrobox-host-exec "$cmd" "$@"
+    else
+        echo "bash: $cmd: command not found" >&2
+        return 127
+    fi
+}
+EOF
+                
+                cat > "$handler_dir/zsh_command_not_found_handler" << 'EOF'
+#!/bin/bash
+# Distrobox ZSH Command-Not-Found Handler
+zsh_command_not_found_handler() {
+    local cmd="$1"
+    shift
+    local args="$@"
+    
+    if ! command -v distrobox-host-exec >/dev/null 2>&1; then
+        echo "zsh: command not found: $cmd" >&2
+        return 127
+    fi
+    
+    if distrobox-host-exec which "$cmd" >/dev/null 2>&1; then
+        echo "Command '$cmd' not found in container, executing on host..." >&2
+        exec distrobox-host-exec "$cmd" "$@"
+    else
+        echo "zsh: command not found: $cmd" >&2
+        return 127
+    fi
+}
+EOF
+                
+                chmod +x "$handler_dir/command_not_found_handle"
+                chmod +x "$handler_dir/zsh_command_not_found_handler"
+                
+                mkdir -p /etc/bash.bashrc.d
+                cat > /etc/bash.bashrc.d/99-distrobox-cnf << 'EOF'
+# Distrobox Command-Not-Found Handler Integration
+if [ -f "$HOME/.local/distrobox-handler/command_not_found_handle" ]; then
+    source "$HOME/.local/distrobox-handler/command_not_found_handle"
+fi
+EOF
+                
+                mkdir -p /etc/zsh/zshrc.d
+                cat > /etc/zsh/zshrc.d/99-distrobox-cnf.zsh << 'EOF'
+# Distrobox Command-Not-Found Handler Integration for ZSH
+if [ -f "$HOME/.local/distrobox-handler/zsh_command_not_found_handler" ]; then
+    source "$HOME/.local/distrobox-handler/zsh_command_not_found_handler"
+fi
+EOF
+                
+                if [ -f "$HOME/.bashrc" ] && ! grep -q "distrobox-handler/command_not_found_handle" "$HOME/.bashrc"; then
+                    cat >> "$HOME/.bashrc" << 'EOF'
+
+# Distrobox Command-Not-Found Handler Integration
+if [ -f "$HOME/.local/distrobox-handler/command_not_found_handle" ]; then
+    source "$HOME/.local/distrobox-handler/command_not_found_handle"
+fi
+EOF
+                fi
+                
+                if [ -f "$HOME/.zshrc" ] && ! grep -q "distrobox-handler/zsh_command_not_found_handler" "$HOME/.zshrc"; then
+                    cat >> "$HOME/.zshrc" << 'EOF'
+
+# Distrobox Command-Not-Found Handler Integration
+if [ -f "$HOME/.local/distrobox-handler/zsh_command_not_found_handler" ]; then
+    source "$HOME/.local/distrobox-handler/zsh_command_not_found_handler"
+fi
+EOF
+                fi
+                
+                cat > /etc/profile.d/distrobox-host-aliases.sh << 'EOF'
+# Common host command aliases for distrobox containers
+alias xdg-open='distrobox-host-exec xdg-open'
+alias nautilus='distrobox-host-exec nautilus'
+alias dolphin='distrobox-host-exec dolphin'
+alias thunar='distrobox-host-exec thunar'
+alias htop='distrobox-host-exec htop'
+alias lscpu='distrobox-host-exec lscpu'
+alias lsusb='distrobox-host-exec lsusb'
+alias lspci='distrobox-host-exec lspci'
+alias nmcli='distrobox-host-exec nmcli'
+alias nmtui='distrobox-host-exec nmtui'
+alias flatpak='distrobox-host-exec flatpak'
+alias snap='distrobox-host-exec snap'
+alias gedit='distrobox-host-exec gedit'
+alias kate='distrobox-host-exec kate'
+alias firefox='distrobox-host-exec firefox'
+alias chromium='distrobox-host-exec chromium'
+alias google-chrome='distrobox-host-exec google-chrome'
+EOF
+                
+                echo "Configuração atualizada com sucesso!"
+                echo "Reinicie o terminal ou execute: source ~/.bashrc"
+                ;;
+            3)
+                read -p "Deseja remover o Distrobox Command Handler? (s/n): " -n 1 resposta
+                echo
+                if [ "$resposta" = "s" ]; then
+                    echo "Removendo Distrobox Command Handler..."
+                    
+                    rm -rf "$HOME/.local/distrobox-handler" 2>/dev/null
+                    
+                    rm -f /etc/bash.bashrc.d/99-distrobox-cnf 2>/dev/null
+                    rm -f /etc/zsh/zshrc.d/99-distrobox-cnf.zsh 2>/dev/null
+                    rm -f /etc/profile.d/distrobox-host-aliases.sh 2>/dev/null
+                    
+                    if [ -f "$HOME/.bashrc" ]; then
+                        sed -i '/# Distrobox Command-Not-Found Handler Integration/,+3d' "$HOME/.bashrc"
+                    fi
+                    
+                    if [ -f "$HOME/.zshrc" ]; then
+                        sed -i '/# Distrobox Command-Not-Found Handler Integration/,+3d' "$HOME/.zshrc"
+                    fi
+                    
+                    rm -f "$S_DISTROBOX_HANDLER"
+                    echo "Distrobox Command Handler removido com sucesso!"
+                    echo "Reinicie o terminal para aplicar."
+                fi
+                ;;
+            4)
+                return
+                ;;
+        esac
+    else
+        echo "Status: NÃO INSTALADO"
+        echo "Distrobox Command Handler permite executar comandos do host"
+        echo "automaticamente quando não encontrados em containers Distrobox."
+        read -p "Instalar Distrobox Command Handler? (s/n): " -n 1 resposta
+        echo
+        
+        if [ "$resposta" = "s" ]; then
+            echo "Instalando Distrobox Command Handler..."
+            
+            local handler_dir="$HOME/.local/distrobox-handler"
+            mkdir -p "$handler_dir"
+            
+            cat > "$handler_dir/command_not_found_handle" << 'EOF'
+#!/bin/bash
+# Distrobox Command-Not-Found Handler
+# Automatically executes commands on host if not found in container
+command_not_found_handle() {
+    local cmd="$1"
+    shift
+    local args="$@"
+    
+    if ! command -v distrobox-host-exec >/dev/null 2>&1; then
+        echo "bash: $cmd: command not found" >&2
+        return 127
+    fi
+    
+    if distrobox-host-exec which "$cmd" >/dev/null 2>&1; then
+        echo "Command '$cmd' not found in container, executing on host..." >&2
+        exec distrobox-host-exec "$cmd" "$@"
+    else
+        echo "bash: $cmd: command not found" >&2
+        return 127
+    fi
+}
+EOF
+            
+            cat > "$handler_dir/zsh_command_not_found_handler" << 'EOF'
+#!/bin/bash
+# Distrobox ZSH Command-Not-Found Handler
+zsh_command_not_found_handler() {
+    local cmd="$1"
+    shift
+    local args="$@"
+    
+    if ! command -v distrobox-host-exec >/dev/null 2>&1; then
+        echo "zsh: command not found: $cmd" >&2
+        return 127
+    fi
+    
+    if distrobox-host-exec which "$cmd" >/dev/null 2>&1; then
+        echo "Command '$cmd' not found in container, executing on host..." >&2
+        exec distrobox-host-exec "$cmd" "$@"
+    else
+        echo "zsh: command not found: $cmd" >&2
+        return 127
+    fi
+}
+EOF
+            
+            chmod +x "$handler_dir/command_not_found_handle"
+            chmod +x "$handler_dir/zsh_command_not_found_handler"
+            
+            mkdir -p /etc/bash.bashrc.d
+            cat > /etc/bash.bashrc.d/99-distrobox-cnf << 'EOF'
+# Distrobox Command-Not-Found Handler Integration
+if [ -f "$HOME/.local/distrobox-handler/command_not_found_handle" ]; then
+    source "$HOME/.local/distrobox-handler/command_not_found_handle"
+fi
+EOF
+            
+            mkdir -p /etc/zsh/zshrc.d
+            cat > /etc/zsh/zshrc.d/99-distrobox-cnf.zsh << 'EOF'
+# Distrobox Command-Not-Found Handler Integration for ZSH
+if [ -f "$HOME/.local/distrobox-handler/zsh_command_not_found_handler" ]; then
+    source "$HOME/.local/distrobox-handler/zsh_command_not_found_handler"
+fi
+EOF
+            
+            if [ -f "$HOME/.bashrc" ]; then
+                cat >> "$HOME/.bashrc" << 'EOF'
+
+# Distrobox Command-Not-Found Handler Integration
+if [ -f "$HOME/.local/distrobox-handler/command_not_found_handle" ]; then
+    source "$HOME/.local/distrobox-handler/command_not_found_handle"
+fi
+EOF
+            fi
+            
+            if [ -f "$HOME/.zshrc" ]; then
+                cat >> "$HOME/.zshrc" << 'EOF'
+
+# Distrobox Command-Not-Found Handler Integration
+if [ -f "$HOME/.local/distrobox-handler/zsh_command_not_found_handler" ]; then
+    source "$HOME/.local/distrobox-handler/zsh_command_not_found_handler"
+fi
+EOF
+            fi
+            
+            cat > /etc/profile.d/distrobox-host-aliases.sh << 'EOF'
+# Common host command aliases for distrobox containers
+alias xdg-open='distrobox-host-exec xdg-open'
+alias nautilus='distrobox-host-exec nautilus'
+alias dolphin='distrobox-host-exec dolphin'
+alias thunar='distrobox-host-exec thunar'
+alias htop='distrobox-host-exec htop'
+alias lscpu='distrobox-host-exec lscpu'
+alias lsusb='distrobox-host-exec lsusb'
+alias lspci='distrobox-host-exec lspci'
+alias nmcli='distrobox-host-exec nmcli'
+alias nmtui='distrobox-host-exec nmtui'
+alias flatpak='distrobox-host-exec flatpak'
+alias snap='distrobox-host-exec snap'
+alias gedit='distrobox-host-exec gedit'
+alias kate='distrobox-host-exec kate'
+alias firefox='distrobox-host-exec firefox'
+alias chromium='distrobox-host-exec chromium'
+alias google-chrome='distrobox-host-exec google-chrome'
+EOF
+            
+            echo "1" > "$S_DISTROBOX_HANDLER"
+            echo "Distrobox Command Handler instalado com sucesso!"
+            echo ""
+            echo "Recursos instalados:"
+            echo "  • Handler para Bash e Zsh"
+            echo "  • Integração system-wide"
+            echo "  • Aliases para comandos comuns"
+            echo ""
+            echo "Reinicie o terminal ou execute: source ~/.bashrc"
+        fi
+    fi
+    
+    read -p "Pressione Enter para continuar..."
+}
+
 main() {
     while true; do
         clear
@@ -2367,7 +3162,10 @@ main() {
         echo "20) Arch Secure Boot (sbctl)"
         echo "21) Btrfs Assistant"
         echo "22) CachyOS Configs"
-        echo "23) Sair"
+        echo "23) HW Acceleration Flatpak"
+        echo "24) Swapfile Manager"
+        echo "25) Distrobox Command Handler"
+        echo "26) Sair"
         read -p "> " opcao
         
         case $opcao in
@@ -2393,11 +3191,13 @@ main() {
             20) archsb_install ;;
             21) btrfs_assistant_install ;;
             22) cachyconfs_install ;;
-            23) exit 0 ;;
+            23) hwaccel_flatpak_install ;;
+            24) swapfile_install ;;
+            25) distrobox_handler_install ;;
+            26) exit 0 ;;
             *) ;;
         esac
     done
 }
 
 main
-```
