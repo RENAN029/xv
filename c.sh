@@ -7,7 +7,6 @@ sudo pacman -S --noconfirm gdu
 
 nvidia-open intel-ucode neovim fastfetch btop ufw fwupd flatpak yt-dlp aria2 
  
-
 sudo pacman -Syu --noconfirm 
 sudo pacman -Scc --noconfirm
 echo "sudo pacman -S nix yay gamescope distrobox python-pip rustup ananicy-cpp zerotier-one tailscale mise pnpm docker"   
