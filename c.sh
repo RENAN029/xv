@@ -5,7 +5,7 @@ sudo pacman -S --noconfirm ffmpeg gst-plugins-ugly gst-plugins-good gst-plugins-
 sudo pacman -S --noconfirm cosmic-session cosmic-terminal cosmic-files cosmic-store cosmic-wallpapers xdg-user-dirs croc
 sudo pacman -S --noconfirm gdu
 
-nvidia-open intel-ucode git neovim fastfetch btop ufw fwupd flatpak yt-dlp aria2 tealdeer
+nvidia-open intel-ucode git neovim fastfetch btop ufw fwupd flatpak yt-dlp aria2 
  
 echo "sudo pacman -S fzf starship fish fisher tealdeer ripgrep zoxide eza bat fd lazygit lazydocker" 
 sudo pacman -S --noconfirm gamemode fuse dnsmasq apparmor 
