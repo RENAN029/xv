@@ -34,6 +34,8 @@ cpu_ondemand() {
             sudo rm -f /etc/default/grub.d/01_intel_pstate_disable 2>/dev/null || true
             sudo rm -f /etc/kernel/cmdline.d/10-intel-pstate-disable.conf 2>/dev/null || true
             
+            sudo rm -f /usr/local/bin/set-ondemand-governor.sh 2>/dev/null || true
+            
             sudo grub-mkconfig -o /boot/grub/grub.cfg 2>/dev/null || true
             sudo bootctl update 2>/dev/null || true
             
@@ -62,14 +64,58 @@ WantedBy=multi-user.target' | sudo tee /etc/systemd/system/set-ondemand-governor
             
             sudo systemctl enable set-ondemand-governor.service
             
+            sudo mkdir -p /etc/default/grub.d
             echo 'GRUB_CMDLINE_LINUX_DEFAULT="${GRUB_CMDLINE_LINUX_DEFAULT} intel_pstate=disable"' | sudo tee /etc/default/grub.d/01_intel_pstate_disable
             
-            sudo grub-mkconfig -o /boot/grub/grub.cfg
+            sudo grub-mkconfig -o /boot/grub/grub.cfg 2>/dev/null || true
             
             touch "$state_file"
             echo "CPU Ondemand instalado. Reinicie para aplicar."
         fi
     fi
+}
+
+swapfile_create() {
+    local location="$1"
+    local size="$2"
+    
+    case $location in
+        1)
+            if findmnt -n -o FSTYPE / | grep -q "btrfs"; then
+                sudo btrfs subvolume create /swap 2>/dev/null || true
+                sudo btrfs filesystem mkswapfile --size ${size}g --uuid clear /swap/swapfile
+                sudo swapon /swap/swapfile
+                echo "/swap/swapfile none swap defaults 0 0" | sudo tee -a /etc/fstab
+            else
+                sudo dd if=/dev/zero of=/swapfile bs=1G count=$size status=progress 2>/dev/null || true
+                sudo chmod 600 /swapfile
+                sudo mkswap /swapfile
+                sudo swapon /swapfile
+                echo "/swapfile none swap defaults 0 0" | sudo tee -a /etc/fstab
+            fi
+            ;;
+        2)
+            if findmnt -n -o FSTYPE /home | grep -q "btrfs"; then
+                sudo btrfs subvolume create /home/swap 2>/dev/null || true
+                sudo btrfs filesystem mkswapfile --size ${size}g --uuid clear /home/swap/swapfile
+                sudo swapon /home/swap/swapfile
+                echo "/home/swap/swapfile none swap defaults 0 0" | sudo tee -a /etc/fstab
+            else
+                sudo dd if=/dev/zero of=/home/swapfile bs=1G count=$size status=progress 2>/dev/null || true
+                sudo chmod 600 /home/swapfile
+                sudo mkswap /home/swapfile
+                sudo swapon /home/swapfile
+                echo "/home/swapfile none swap defaults 0 0" | sudo tee -a /etc/fstab
+            fi
+            ;;
+        *)
+            echo "Opção inválida"
+            return 1
+            ;;
+    esac
+    
+    echo "# swapfile" | sudo tee -a /etc/fstab
+    return 0
 }
 
 swapfile() {
@@ -78,6 +124,8 @@ swapfile() {
     if [ -f "$state_file" ] || swapon --show | grep -q '.'; then
         if confirm "Swapfile detectado. Desinstalar?"; then
             echo "Desinstalando Swapfile..."
+            
+            sudo swapoff -a 2>/dev/null || true
             
             if [ -f "/swapfile" ]; then
                 sudo swapoff /swapfile 2>/dev/null || true
@@ -114,47 +162,166 @@ swapfile() {
         echo "2) /home"
         read -p "Opção: " location
         
-        if confirm "Criar swapfile de 8GB?"; then
-            echo "Criando swapfile..."
+        if [ "$location" != "1" ] && [ "$location" != "2" ]; then
+            echo "Opção inválida"
+            return
+        fi
+        
+        read -p "Tamanho em GB (padrão: 8): " size
+        size=${size:-8}
+        
+        if ! [[ "$size" =~ ^[0-9]+$ ]]; then
+            echo "Tamanho inválido"
+            return
+        fi
+        
+        if confirm "Criar swapfile de ${size}GB?"; then
+            echo "Criando swapfile de ${size}GB..."
             
-            case $location in
-                1)
-                    if findmnt -n -o FSTYPE / | grep -q "btrfs"; then
-                        sudo btrfs subvolume create /swap 2>/dev/null || true
-                        sudo btrfs filesystem mkswapfile --size 8g --uuid clear /swap/swapfile
-                        sudo swapon /swap/swapfile
-                        echo "/swap/swapfile none swap defaults 0 0" | sudo tee -a /etc/fstab
-                    else
-                        sudo dd if=/dev/zero of=/swapfile bs=1G count=8 status=progress
-                        sudo chmod 600 /swapfile
-                        sudo mkswap /swapfile
-                        sudo swapon /swapfile
-                        echo "/swapfile none swap defaults 0 0" | sudo tee -a /etc/fstab
-                    fi
-                    ;;
-                2)
-                    if findmnt -n -o FSTYPE /home | grep -q "btrfs"; then
-                        sudo btrfs subvolume create /home/swap 2>/dev/null || true
-                        sudo btrfs filesystem mkswapfile --size 8g --uuid clear /home/swap/swapfile
-                        sudo swapon /home/swap/swapfile
-                        echo "/home/swap/swapfile none swap defaults 0 0" | sudo tee -a /etc/fstab
-                    else
-                        sudo dd if=/dev/zero of=/home/swapfile bs=1G count=8 status=progress
-                        sudo chmod 600 /home/swapfile
-                        sudo mkswap /home/swapfile
-                        sudo swapon /home/swapfile
-                        echo "/home/swapfile none swap defaults 0 0" | sudo tee -a /etc/fstab
-                    fi
-                    ;;
-                *)
-                    echo "Opção inválida"
-                    return
-                    ;;
-            esac
+            if swapfile_create "$location" "$size"; then
+                touch "$state_file"
+                echo "Swapfile criado com sucesso."
+            fi
+        fi
+    fi
+}
+
+fish_basic() {
+    local state_file="$STATE_DIR/fish_basic"
+    local pkg_fish="fish"
+    
+    if [ -f "$state_file" ] || (pacman -Q fish &>/dev/null); then
+        if confirm "Fish básico detectado. Desinstalar?"; then
+            echo "Desinstalando Fish básico..."
             
-            echo "# swapfile" | sudo tee -a /etc/fstab
+            if pacman -Qq fish &>/dev/null; then
+                sudo pacman -Rsnu --noconfirm $pkg_fish || true
+            fi
+            
+            sudo chsh -s "$(which bash)" "$USER" 2>/dev/null || true
+            
+            cleanup_files "$state_file" "$HOME/.config/fish"
+            echo "Fish básico desinstalado."
+        fi
+    else
+        if confirm "Instalar Fish básico?"; then
+            echo "Instalando Fish básico..."
+            
+            sudo pacman -S --noconfirm $pkg_fish
+            sudo chsh -s "$(which fish)" "$USER"
+            
+            mkdir -p ~/.config/fish
+            echo "set fish_greeting" > ~/.config/fish/config.fish
+            
             touch "$state_file"
-            echo "Swapfile criado com sucesso."
+            echo "Fish básico instalado. Mensagem de boas-vindas removida."
+        fi
+    fi
+}
+
+fisher() {
+    local state_file="$STATE_DIR/fisher"
+    local pkg_fish="fish fisher"
+    
+    if [ -f "$state_file" ] || (pacman -Q fisher &>/dev/null); then
+        if confirm "Fisher detectado. Desinstalar?"; then
+            echo "Desinstalando Fisher..."
+            
+            if pacman -Qq fish fisher &>/dev/null; then
+                sudo pacman -Rsnu --noconfirm $pkg_fish || true
+            fi
+            
+            sudo chsh -s "$(which bash)" "$USER" 2>/dev/null || true
+            
+            cleanup_files "$state_file" "$HOME/.config/fish"
+            echo "Fisher desinstalado."
+        fi
+    else
+        if confirm "Instalar Fisher?"; then
+            echo "Instalando Fisher..."
+            
+            sudo pacman -S --noconfirm $pkg_fish
+            sudo chsh -s "$(which fish)" "$USER"
+            
+            mkdir -p ~/.config/fish
+            echo "set fish_greeting" > ~/.config/fish/config.fish
+            
+            if command -v fish >/dev/null 2>&1; then
+                fish -c "fisher install jorgebucaran/fisher" 2>/dev/null || true
+            fi
+            
+            touch "$state_file"
+            echo "Fisher instalado. Mensagem de boas-vindas removida."
+        fi
+    fi
+}
+
+fish_menu() {
+    while true; do
+        clear
+        echo "=== Fish Shell ==="
+        echo "1) Fish Básico (sem Fisher)"
+        echo "2) Fish com Fisher"
+        echo "3) Voltar"
+        echo
+        read -p "Selecione uma opção: " opcao
+        
+        case $opcao in
+            1) clear; fish_basic ;;
+            2) clear; fisher ;;
+            3) return ;;
+            *) ;;
+        esac
+        
+        [ "$opcao" -ge 1 ] && [ "$opcao" -le 2 ] && read -p "Pressione Enter para continuar..."
+    done
+}
+
+ufw() {
+    local state_file="$STATE_DIR/ufw"
+    local pkg_ufw="ufw"
+    
+    if [ -f "$state_file" ] || (pacman -Q ufw &>/dev/null); then
+        if confirm "UFW detectado. Desinstalar?"; then
+            echo "Desinstalando UFW..."
+            
+            if systemctl is-active --quiet ufw 2>/dev/null; then
+                sudo systemctl stop ufw || true
+            fi
+            
+            if systemctl is-enabled --quiet ufw 2>/dev/null; then
+                sudo systemctl disable ufw || true
+            fi
+            
+            if pacman -Qq ufw &>/dev/null; then
+                sudo pacman -Rsnu --noconfirm $pkg_ufw || true
+            fi
+            
+            sudo rm -rf /etc/ufw /lib/ufw /usr/share/ufw /var/lib/ufw 2>/dev/null || true
+            sudo rm -f /usr/bin/ufw /usr/sbin/ufw 2>/dev/null || true
+            
+            cleanup_files "$state_file"
+            echo "UFW desinstalado."
+        fi
+    else
+        if confirm "Instalar UFW?"; then
+            echo "Instalando UFW..."
+            
+            sudo pacman -S --noconfirm $pkg_ufw
+            
+            sudo ufw default deny incoming
+            sudo ufw default allow outgoing
+            sudo ufw allow 53317/udp
+            sudo ufw allow 53317/tcp
+            sudo ufw allow 1714:1764/udp
+            sudo ufw allow 1714:1764/tcp
+            
+            sudo systemctl enable ufw
+            sudo ufw --force enable
+            
+            sudo ufw status verbose
+            touch "$state_file"
+            echo "UFW instalado e configurado."
         fi
     fi
 }
@@ -265,40 +432,6 @@ starship() {
             
             touch "$state_file"
             echo "Starship instalado com suporte para bash, zsh e fish."
-        fi
-    fi
-}
-
-fisher() {
-    local state_file="$STATE_DIR/fisher"
-    local pkg_fish="fish fisher"
-    
-    if [ -f "$state_file" ] || (pacman -Q fish &>/dev/null); then
-        if confirm "Fisher detectado. Desinstalar?"; then
-            echo "Desinstalando Fisher..."
-            
-            if pacman -Qq fish fisher &>/dev/null; then
-                sudo pacman -Rsnu --noconfirm $pkg_fish || true
-            fi
-            
-            sudo chsh -s "$(which bash)" "$USER" 2>/dev/null || true
-            
-            cleanup_files "$state_file" "$HOME/.config/fish"
-            echo "Fisher desinstalado."
-        fi
-    else
-        if confirm "Instalar Fisher?"; then
-            echo "Instalando Fisher..."
-            
-            sudo pacman -S --noconfirm $pkg_fish
-            sudo chsh -s "$(which fish)" "$USER"
-            
-            if command -v fish >/dev/null 2>&1; then
-                fish -c "fisher install jorgebucaran/fisher" 2>/dev/null || true
-            fi
-            
-            touch "$state_file"
-            echo "Fisher instalado."
         fi
     fi
 }
@@ -827,6 +960,7 @@ apparmor() {
             sudo pacman -S --noconfirm $pkg_apparmor
             
             if pacman -Qq grub &>/dev/null; then
+                sudo mkdir -p /etc/default/grub.d
                 echo 'GRUB_CMDLINE_LINUX_DEFAULT="${GRUB_CMDLINE_LINUX_DEFAULT} apparmor=1 security=apparmor"' | sudo tee /etc/default/grub.d/99-apparmor.cfg
                 sudo grub-mkconfig -o /boot/grub/grub.cfg
             else
@@ -1038,53 +1172,6 @@ shader_booster() {
     fi
 }
 
-ufw() {
-    local state_file="$STATE_DIR/ufw"
-    local pkg_ufw="ufw gufw"
-    
-    if [ -f "$state_file" ] || (pacman -Q ufw &>/dev/null); then
-        if confirm "UFW detectado. Desinstalar?"; then
-            echo "Desinstalando UFW..."
-            
-            if systemctl is-active --quiet ufw 2>/dev/null; then
-                sudo systemctl stop ufw || true
-            fi
-            
-            if systemctl is-enabled --quiet ufw 2>/dev/null; then
-                sudo systemctl disable ufw || true
-            fi
-            
-            sudo pacman -Rsnu --noconfirm $pkg_ufw || true
-            
-            sudo rm -rf /etc/ufw /lib/ufw /usr/share/ufw /var/lib/ufw 2>/dev/null || true
-            sudo rm -f /usr/bin/ufw /usr/sbin/ufw 2>/dev/null || true
-            
-            cleanup_files "$state_file"
-            echo "UFW desinstalado."
-        fi
-    else
-        if confirm "Instalar UFW?"; then
-            echo "Instalando UFW..."
-            
-            sudo pacman -S --noconfirm $pkg_ufw
-            
-            sudo ufw default deny incoming
-            sudo ufw default allow outgoing
-            sudo ufw allow 53317/udp
-            sudo ufw allow 53317/tcp
-            sudo ufw allow 1714:1764/udp
-            sudo ufw allow 1714:1764/tcp
-            
-            sudo systemctl enable ufw
-            sudo ufw --force enable
-            
-            sudo ufw status verbose
-            touch "$state_file"
-            echo "UFW instalado e configurado."
-        fi
-    fi
-}
-
 main() {
     while true; do
         clear
@@ -1097,7 +1184,7 @@ main() {
         echo "6) CPU Ondemand"
         echo "7) DNSMasq"
         echo "8) EarlyOOM"
-        echo "9) Fisher"
+        echo "9) Fish Shell"
         echo "10) Flathub"
         echo "11) Gamemode"
         echo "12) Gamescope"
@@ -1124,7 +1211,7 @@ main() {
             6) clear; cpu_ondemand ;;
             7) clear; dnsmasq ;;
             8) clear; earlyoom ;;
-            9) clear; fisher ;;
+            9) clear; fish_menu ;;
             10) clear; flathub ;;
             11) clear; gamemode ;;
             12) clear; gamescope ;;
