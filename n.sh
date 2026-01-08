@@ -22,16 +22,18 @@ cleanup_files() {
 
 de_cosmic() {
     local state_file="$STATE_DIR/de_cosmic"
+    local pkg_base="noto-fonts noto-fonts-cjk noto-fonts-emoji ttf-noto-nerd noto-fonts-extra ttf-jetbrains-mono"
+    local pkg_media="ffmpeg gst-plugins-ugly gst-plugins-good gst-plugins-base gst-plugins-bad gst-libav gstreamer"
+    local pkg_cosmic="cosmic-session cosmic-terminal cosmic-files cosmic-store cosmic-wallpapers xdg-user-dirs croc gdu"
     
-    if [ -f "$state_file" ] || (pacman -Q cosmic-session &>/dev/null 2>&1); then
+    if [ -f "$state_file" ] || (pacman -Q cosmic-session &>/dev/null); then
         if confirm "Cosmic detectado. Desinstalar?"; then
             echo "Desinstalando Cosmic..."
             
             sudo systemctl disable cosmic-greeter 2>/dev/null || true
-            sudo pacman -Rsnu --noconfirm cosmic-session cosmic-terminal cosmic-files cosmic-store cosmic-wallpapers || true
-            sudo pacman -Rsnu --noconfirm noto-fonts noto-fonts-cjk noto-fonts-emoji ttf-noto-nerd noto-fonts-extra ttf-jetbrains-mono || true
-            sudo pacman -Rsnu --noconfirm ffmpeg gst-plugins-ugly gst-plugins-good gst-plugins-base gst-plugins-bad gst-libav gstreamer || true
-            sudo pacman -Rsnu --noconfirm xdg-user-dirs croc gdu || true
+            sudo pacman -Rsnu --noconfirm $pkg_cosmic || true
+            sudo pacman -Rsnu --noconfirm $pkg_media || true
+            sudo pacman -Rsnu --noconfirm $pkg_base || true
             
             cleanup_files "$state_file"
             echo "Cosmic desinstalado."
@@ -40,10 +42,9 @@ de_cosmic() {
         if confirm "Instalar Cosmic?"; then
             echo "Instalando Cosmic..."
             
-            sudo pacman -S --noconfirm noto-fonts noto-fonts-cjk noto-fonts-emoji ttf-noto-nerd noto-fonts-extra ttf-jetbrains-mono
-            sudo pacman -S --noconfirm ffmpeg gst-plugins-ugly gst-plugins-good gst-plugins-base gst-plugins-bad gst-libav gstreamer
-            sudo pacman -S --noconfirm cosmic-session cosmic-terminal cosmic-files cosmic-store cosmic-wallpapers xdg-user-dirs croc
-            sudo pacman -S --noconfirm gdu
+            sudo pacman -S --noconfirm $pkg_base
+            sudo pacman -S --noconfirm $pkg_media
+            sudo pacman -S --noconfirm $pkg_cosmic
             sudo systemctl enable cosmic-greeter
             
             touch "$state_file"
@@ -54,15 +55,18 @@ de_cosmic() {
 
 de_gnome() {
     local state_file="$STATE_DIR/de_gnome"
+    local pkg_base="noto-fonts noto-fonts-cjk noto-fonts-emoji ttf-noto-nerd noto-fonts-extra ttf-jetbrains-mono"
+    local pkg_media="ffmpeg gst-plugins-ugly gst-plugins-good gst-plugins-base gst-plugins-bad gst-libav gstreamer"
+    local pkg_gnome="gnome-shell gnome-console gnome-software gnome-tweaks gnome-control-center gnome-disk-utility gdm"
     
-    if [ -f "$state_file" ] || (pacman -Q gnome-shell &>/dev/null 2>&1); then
+    if [ -f "$state_file" ] || (pacman -Q gnome-shell &>/dev/null); then
         if confirm "Gnome detectado. Desinstalar?"; then
             echo "Desinstalando Gnome..."
             
             sudo systemctl disable gdm 2>/dev/null || true
-            sudo pacman -Rsnu --noconfirm gnome-shell gnome-console gnome-software gnome-tweaks gnome-control-center gnome-disk-utility gdm || true
-            sudo pacman -Rsnu --noconfirm noto-fonts noto-fonts-cjk noto-fonts-emoji ttf-noto-nerd noto-fonts-extra ttf-jetbrains-mono || true
-            sudo pacman -Rsnu --noconfirm ffmpeg gst-plugins-ugly gst-plugins-good gst-plugins-base gst-plugins-bad gst-libav gstreamer || true
+            sudo pacman -Rsnu --noconfirm $pkg_gnome || true
+            sudo pacman -Rsnu --noconfirm $pkg_media || true
+            sudo pacman -Rsnu --noconfirm $pkg_base || true
             
             cleanup_files "$state_file"
             echo "Gnome desinstalado."
@@ -71,10 +75,9 @@ de_gnome() {
         if confirm "Instalar Gnome?"; then
             echo "Instalando Gnome..."
             
-            sudo pacman -S --noconfirm noto-fonts noto-fonts-cjk noto-fonts-emoji ttf-noto-nerd noto-fonts-extra ttf-jetbrains-mono
-            sudo pacman -S --noconfirm ffmpeg gst-plugins-ugly gst-plugins-good gst-plugins-base gst-plugins-bad gst-libav gstreamer
-            sudo pacman -S --noconfirm gnome-shell gnome-console gnome-software gnome-tweaks gnome-control-center gnome-disk-utility
-            sudo pacman -S --noconfirm gdm
+            sudo pacman -S --noconfirm $pkg_base
+            sudo pacman -S --noconfirm $pkg_media
+            sudo pacman -S --noconfirm $pkg_gnome
             sudo systemctl enable gdm
             
             touch "$state_file"
@@ -85,15 +88,18 @@ de_gnome() {
 
 de_plasma() {
     local state_file="$STATE_DIR/de_plasma"
+    local pkg_base="noto-fonts noto-fonts-cjk noto-fonts-emoji ttf-noto-nerd noto-fonts-extra ttf-jetbrains-mono"
+    local pkg_media="ffmpeg gst-plugins-ugly gst-plugins-good gst-plugins-base gst-plugins-bad gst-libav gstreamer"
+    local pkg_plasma="plasma-meta konsole dolphin discover kdeconnect partitionmanager ffmpegthumbs dolphin-plugins ark"
     
-    if [ -f "$state_file" ] || (pacman -Q plasma-meta &>/dev/null 2>&1); then
+    if [ -f "$state_file" ] || (pacman -Q plasma-meta &>/dev/null); then
         if confirm "Plasma detectado. Desinstalar?"; then
             echo "Desinstalando Plasma..."
             
             sudo systemctl disable sddm 2>/dev/null || true
-            sudo pacman -Rsnu --noconfirm plasma-meta konsole dolphin discover kdeconnect partitionmanager ffmpegthumbs dolphin-plugins ark || true
-            sudo pacman -Rsnu --noconfirm noto-fonts noto-fonts-cjk noto-fonts-emoji ttf-noto-nerd noto-fonts-extra ttf-jetbrains-mono || true
-            sudo pacman -Rsnu --noconfirm ffmpeg gst-plugins-ugly gst-plugins-good gst-plugins-base gst-plugins-bad gst-libav gstreamer || true
+            sudo pacman -Rsnu --noconfirm $pkg_plasma || true
+            sudo pacman -Rsnu --noconfirm $pkg_media || true
+            sudo pacman -Rsnu --noconfirm $pkg_base || true
             
             cleanup_files "$state_file"
             echo "Plasma desinstalado."
@@ -102,10 +108,9 @@ de_plasma() {
         if confirm "Instalar Plasma?"; then
             echo "Instalando Plasma..."
             
-            sudo pacman -S --noconfirm noto-fonts noto-fonts-cjk noto-fonts-emoji ttf-noto-nerd noto-fonts-extra ttf-jetbrains-mono
-            sudo pacman -S --noconfirm ffmpeg gst-plugins-ugly gst-plugins-good gst-plugins-base gst-plugins-bad gst-libav gstreamer
-            sudo pacman -S --noconfirm plasma-meta konsole dolphin discover kdeconnect partitionmanager ffmpegthumbs dolphin-plugins
-            sudo pacman -S --noconfirm ark
+            sudo pacman -S --noconfirm $pkg_base
+            sudo pacman -S --noconfirm $pkg_media
+            sudo pacman -S --noconfirm $pkg_plasma
             sudo systemctl enable sddm
             
             touch "$state_file"
@@ -117,7 +122,7 @@ de_plasma() {
 de() {
     while true; do
         clear
-        echo "=== Ambiente Desktop ==="
+        echo "=== Ambientes Desktop ==="
         echo "1) Cosmic"
         echo "2) Gnome"
         echo "3) Plasma"
@@ -133,7 +138,7 @@ de() {
             *) ;;
         esac
         
-        read -p "Pressione Enter para continuar..."
+        [ "$opcao" -ge 1 ] && [ "$opcao" -le 3 ] && read -p "Pressione Enter para continuar..."
     done
 }
 
@@ -381,6 +386,7 @@ shader_booster() {
 
 ufw() {
     local state_file="$STATE_DIR/ufw"
+    local pkg_ufw="ufw gufw"
     
     if [ -f "$state_file" ] || (pacman -Q ufw &>/dev/null); then
         if confirm "UFW detectado. Desinstalar?"; then
@@ -394,9 +400,7 @@ ufw() {
                 sudo systemctl disable ufw || true
             fi
             
-            if pacman -Qq ufw gufw &>/dev/null; then
-                sudo pacman -Rsnu --noconfirm ufw gufw || true
-            fi
+            sudo pacman -Rsnu --noconfirm $pkg_ufw || true
             
             sudo rm -rf /etc/ufw /lib/ufw /usr/share/ufw /var/lib/ufw 2>/dev/null || true
             sudo rm -f /usr/bin/ufw /usr/sbin/ufw 2>/dev/null || true
@@ -408,7 +412,7 @@ ufw() {
         if confirm "Instalar UFW?"; then
             echo "Instalando UFW..."
             
-            sudo pacman -S --noconfirm ufw gufw
+            sudo pacman -S --noconfirm $pkg_ufw
             
             sudo ufw default deny incoming
             sudo ufw default allow outgoing
@@ -454,7 +458,7 @@ main() {
             *) ;;
         esac
         
-        read -p "Pressione Enter para continuar..."
+        [ "$opcao" -ge 1 ] && [ "$opcao" -le 7 ] && read -p "Pressione Enter para continuar..."
     done
 }
 
